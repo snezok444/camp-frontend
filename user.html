@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Профиль</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body onload="requireAuth()">
+
+<div id="sideMenu">
+    <a href="dashboard.html">🏠 Главная</a>
+    <a href="admin.html" id="adminLink">🛠 Админ</a>
+    <a href="teams.html">🧩 Команды</a>
+    <a href="rooms.html">🏠 Комнаты</a>
+    <a href="users.html">🧒 Участники</a>
+    <a href="leaderboard.html">🏅 Таблица лидеров</a>
+    <a href="#" onclick="logout()">🚪 Выход</a>
+</div>
+
+<header>
+    <span>Профиль участника</span>
+    <div>
+        <span class="menu-btn" onclick="toggleMenu()">☰</span>
+        <span class="menu-btn" onclick="toggleTheme()">🌙</span>
+    </div>
+</header>
+
+<nav>
+    <a href="dashboard.html">🏠 Главная</a>
+    <a href="admin.html"  id="adminLink">🛠 Админ</a>
+    <a href="teams.html">🧩 Команды</a>
+    <a href="rooms.html">🏠 Комнаты</a>
+    <a href="users.html">🧒 Участники</a>
+    <a href="leaderboard.html">🏅 Таблица лидеров</a>
+    <span class="right">
+        <a href="#" onclick="logout()">🚪 Выход</a>
+    </span>
+</nav>
+
+<div class="container" id="profile"></div>
+
+<script src="api.js"></script>
+<script src="auth.js"></script>
+<script>
+requireAuth();
+
+const id = new URLSearchParams(location.search).get("id");
+let userBlocked = false; // текущее состояние блокировки на фронте
+
+Promise.all([
+    get(`/users/${id}`),
+    get("/teams"),
+    get("/rooms")
+]).then(([u, teams, rooms]) => {
+    const container = document.getElementById("profile");
+    container.innerHTML = "";
+
+    const card = document.createElement("div");
+    card.className = "card";
+
+    /* ===== Заголовок ===== */
+    const title = document.createElement("h2");
+    title.textContent = u.name;
+    card.appendChild(title);
+
+    const roleP = document.createElement("p");
+    roleP.textContent = "Роль: " + u.role;
+    card.appendChild(roleP);
+
+    /* ===== Монеты ===== */
+    const coinsP = document.createElement("p");
+    coinsP.textContent = "Монеты: " + u.coins;
+    card.appendChild(coinsP);
+
+    /* ===== Команда / Комната ===== */
+    if (u.role === "child") {
+        const teamTitle = document.createElement("h3");
+        teamTitle.textContent = "Команда";
+        card.appendChild(teamTitle);
+
+        const teamSelect = document.createElement("select");
+        teamSelect.className = "input";
+        teamSelect.id = "team";
+
+        const optNoneTeam = document.createElement("option");
+        optNoneTeam.value = "";
+        optNoneTeam.textContent = "Без команды";
+        teamSelect.appendChild(optNoneTeam);
+
+        teams.forEach(t => {
+            const opt = document.createElement("option");
+            opt.value = t.id;
+            opt.textContent = t.name;
+            if (u.team_id === t.id) opt.selected = true;
+            teamSelect.appendChild(opt);
+        });
+        card.appendChild(teamSelect);
+
+        const roomTitle = document.createElement("h3");
+        roomTitle.textContent = "Комната";
+        card.appendChild(roomTitle);
+
+        const roomSelect = document.createElement("select");
+        roomSelect.className = "input";
+        roomSelect.id = "room";
+
+        const optNoneRoom = document.createElement("option");
+        optNoneRoom.value = "";
+        optNoneRoom.textContent = "Без комнаты";
+        roomSelect.appendChild(optNoneRoom);
+
+        rooms.forEach(r => {
+            const opt = document.createElement("option");
+            opt.value = r.id;
+            opt.textContent = r.number;
+            if (u.room_id === r.id) opt.selected = true;
+            roomSelect.appendChild(opt);
+        });
+        card.appendChild(roomSelect);
+    }
+
+    /* ===== Управление монетами ===== */
+    const coinsTitle = document.createElement("h3");
+    coinsTitle.textContent = "Монеты";
+    card.appendChild(coinsTitle);
+
+    const amountInput = document.createElement("input");
+    amountInput.className = "input";
+    amountInput.id = "amount";
+    amountInput.type = "number";
+    amountInput.placeholder = "Сумма";
+    card.appendChild(amountInput);
+
+    const addBtn = document.createElement("button");
+    addBtn.className = "btn";
+    addBtn.textContent = "Добавить монеты";
+    addBtn.onclick = addCoins;
+    card.appendChild(addBtn);
+
+    const removeBtn = document.createElement("button");
+    removeBtn.className = "btn secondary";
+    removeBtn.textContent = "Отнять монеты";
+    removeBtn.onclick = removeCoins;
+    card.appendChild(removeBtn);
+
+    // текущее состояние блокировки (если с бэка приходит)
+    userBlocked = !!u.blocked;
+
+    /* ===== КНОПКА-ЗАМОК (SVG) ===== */
+    if (u.role === "child") {
+        const lockBtn = document.createElement("button");
+        lockBtn.className = "btn";
+        lockBtn.style.width = "50px";
+        lockBtn.style.height = "50px";
+        lockBtn.style.borderRadius = "50%";
+        lockBtn.style.display = "flex";
+        lockBtn.style.alignItems = "center";
+        lockBtn.style.justifyContent = "center";
+        lockBtn.style.padding = "0";
+        lockBtn.style.marginTop = "10px";
+
+        function applyBlockState() {
+            if (userBlocked) {
+                addBtn.disabled = true;
+                removeBtn.disabled = true;
+                amountInput.disabled = true;
+
+                addBtn.style.opacity = "0.4";
+                removeBtn.style.opacity = "0.4";
+                amountInput.style.opacity = "0.6";
+            } else {
+                addBtn.disabled = false;
+                removeBtn.disabled = false;
+                amountInput.disabled = false;
+
+                addBtn.style.opacity = "1";
+                removeBtn.style.opacity = "1";
+                amountInput.style.opacity = "1";
+            }
+        }
+
+        function renderLock() {
+            lockBtn.innerHTML = "";
+
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            svg.setAttribute("width", "28");
+            svg.setAttribute("height", "28");
+            svg.setAttribute("viewBox", "0 0 24 24");
+
+            const body = document.createElementNS(svgNS, "rect");
+            body.setAttribute("x", "5");
+            body.setAttribute("y", "10");
+            body.setAttribute("width", "14");
+            body.setAttribute("height", "10");
+            body.setAttribute("rx", "2");
+            body.setAttribute("fill", "white");
+
+            const shackle = document.createElementNS(svgNS, "path");
+            shackle.setAttribute("fill", "white");
+
+            if (userBlocked) {
+                lockBtn.style.background = "#ff4d4d"; // красный
+                shackle.setAttribute("d", "M8 10V8a4 4 0 0 1 8 0v2h-2V8a2 2 0 0 0-4 0v2H8z");
+            } else {
+                lockBtn.style.background = "#4CAF50"; // зелёный
+                shackle.setAttribute("d", "M9 10V8a3 3 0 0 1 6 0h-2a1 1 0 0 0-2 0v2H9z");
+            }
+
+            const keyhole = document.createElementNS(svgNS, "circle");
+            keyhole.setAttribute("cx", "12");
+            keyhole.setAttribute("cy", "15");
+            keyhole.setAttribute("r", "1.3");
+            keyhole.setAttribute("fill", "#888");
+
+            svg.appendChild(body);
+            svg.appendChild(shackle);
+            svg.appendChild(keyhole);
+            lockBtn.appendChild(svg);
+
+            applyBlockState();
+        }
+
+        renderLock();
+
+        lockBtn.onclick = () => {
+            post(`/users/${id}/toggle-block`, {})
+                .then(() => {
+                    userBlocked = !userBlocked;
+                    renderLock();
+                });
+        };
+
+        card.appendChild(lockBtn);
+    }
+
+    /* ===== Сохранить ===== */
+    if (u.role === "child") {
+        const saveBtn = document.createElement("button");
+        saveBtn.className = "btn";
+        saveBtn.textContent = "Сохранить изменения";
+        saveBtn.onclick = saveUser;
+        card.appendChild(saveBtn);
+    }
+
+    /* ===== Удалить ===== */
+    const deleteBtn = document.createElement("button");
+    deleteBtn.className = "btn danger";
+    deleteBtn.textContent = "Удалить участника";
+    deleteBtn.onclick = deleteUser;
+    card.appendChild(deleteBtn);
+
+    container.appendChild(card);
+});
+
+/* ===== Функции ===== */
+
+function addCoins() {
+    if (userBlocked) return;
+    const amount = Number(document.getElementById("amount").value);
+    if (!amount) return;
+    post(`/users/${id}/add`, { amount }).then(() => location.reload());
+}
+
+function removeCoins() {
+    if (userBlocked) return;
+    const amount = Number(document.getElementById("amount").value);
+    if (!amount) return;
+    post(`/users/${id}/remove`, { amount }).then(() => location.reload());
+}
+
+function saveUser() {
+    const team = document.getElementById("team")?.value || null;
+    const room = document.getElementById("room")?.value || null;
+
+    post(`/users/${id}/update`, { team_id: team, room_id: room })
+        .then(() => location.reload());
+}
+
+function deleteUser() {
+    if (!confirm("Удалить участника?")) return;
+    del(`/users/${id}`).then(() => location.href = "users.html");
+}
+</script>

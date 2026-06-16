@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Вход — Лагерь</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <span>Вход</span>
+</header>
+
+<div class="container" style="grid-template-columns: 1fr; max-width: 400px; margin: 0 auto;">
+    <div class="card">
+        <h2>Авторизация</h2>
+        <input class="input" id="login" placeholder="Логин" value="admin">
+        <input class="input" id="password" type="password" placeholder="Пароль" value="admin123">
+        <button class="btn" onclick="doLogin()">Войти</button>
+        <p id="error" style="color:#ff3b30; font-size:13px;"></p>
+    </div>
+</div>
+
+<script>
+function doLogin() {
+    const login = document.getElementById("login").value;
+    const password = document.getElementById("password").value;
+
+    fetch("http://localhost:3000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login, password })
+    }).then(r => r.json()).then(data => {
+        if (data.error) {
+            document.getElementById("error").textContent = data.error;
+        } else {
+            localStorage.setItem("token", data.token);
+            location.href = "dashboard.html";
+        }
+    });
+}
+</script>
+
+</body>
+</html>

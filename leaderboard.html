@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Таблица лидеров</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            border-radius: 10px;
+            background: var(--card);
+            cursor: pointer;
+            font-weight: 600;
+            transition: 0.2s;
+        }
+        .tab.active {
+            background: var(--accent);
+            color: white;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body onload="requireAuth()">
+
+<div id="sideMenu">
+    <a href="dashboard.html">🏠 Главная</a>
+    <a href="admin.html" id="adminLink">🛠 Админ</a>
+    <a href="teams.html">🧩 Команды</a>
+    <a href="rooms.html">🏠 Комнаты</a>
+    <a href="users.html">🧒 Участники</a>
+    <a href="leaderboard.html">🏅 Таблица лидеров</a>
+    <a href="#" onclick="logout()">🚪 Выход</a>
+</div>
+
+<header>
+    <span>Таблица лидеров</span>
+    <div>
+        <span class="menu-btn" onclick="toggleMenu()">☰</span>
+        <span class="menu-btn" onclick="toggleTheme()">🌙</span>
+    </div>
+</header>
+
+<nav>
+    <a href="dashboard.html">🏠 Главная</a>
+    <a href="admin.html" id="adminLink2">🛠 Админ</a>
+    <a href="teams.html">🧩 Команды</a>
+    <a href="rooms.html">🏠 Комнаты</a>
+    <a href="users.html">🧒 Участники</a>
+    <a href="leaderboard.html">🏅 Таблица лидеров</a>
+    <span class="right">
+        <a href="#" onclick="logout()">🚪 Выход</a>
+    </span>
+</nav>
+
+<div class="container">
+
+    <!-- Переключатель -->
+    <div class="tabs">
+        <div class="tab active" id="tabUsers" onclick="showUsers()">Дети</div>
+        <div class="tab" id="tabRooms" onclick="showRooms()">Комнаты</div>
+    </div>
+
+    <!-- Блок участников -->
+    <div id="usersSection">
+        <h2>Топ‑3 участников</h2>
+        <div id="top3"></div>
+
+        <h3>Остальные участники</h3>
+        <div id="others" class="others"></div>
+    </div>
+
+    <!-- Блок комнат -->
+    <div id="roomsSection" class="hidden">
+        <h2>Самые чистые комнаты</h2>
+        <div id="topRooms"></div>
+
+        <h3>Остальные комнаты</h3>
+        <div id="otherRooms" class="others"></div>
+    </div>
+
+</div>
+
+<script src="api.js"></script>
+<script src="auth.js"></script>
+
+<script>
+Promise.all([
+    get("/leaderboard/users"),
+    get("/rooms")
+]).then(([users, rooms]) => {
+
+    /* ===== УЧАСТНИКИ ===== */
+
+    users.sort((a, b) => b.coins - a.coins);
+
+    const top3 = users.slice(0, 3);
+    const others = users.slice(3);
+
+    const maxCoins = Math.max(...top3.map(u => u.coins));
+
+    document.getElementById("top3").innerHTML = `
+        <div class="top3">
+            ${top3.map((u, i) => `
+                <div class="bar ${i === 0 ? "gold" : i === 1 ? "silver" : "bronze"}"
+                     style="height:${120 + (u.coins / maxCoins) * 120}px">
+                    <h3>${u.name}</h3>
+                    <span>${u.coins} монет</span>
+                </div>
+            `).join("")}
+        </div>
+    `;
+
+    document.getElementById("others").innerHTML =
+        others.map((u, i) => `
+            <div class="card">
+                <div class="place">${i + 4}</div>
+                <div>
+                    <h3>${u.name}</h3>
+                    <p>${u.coins} монет</p>
+                </div>
+                <a class="btn" href="user.html?id=${u.id}">Профиль</a>
+            </div>
+        `).join("");
+
+
+    /* ===== КОМНАТЫ ===== */
+
+    rooms.sort((a, b) => b.cleanliness_rating - a.cleanliness_rating);
+
+    const topRooms = rooms.slice(0, 3);
+    const otherRooms = rooms.slice(3);
+
+    const maxRating = Math.max(...topRooms.map(r => r.cleanliness_rating));
+
+    document.getElementById("topRooms").innerHTML = `
+        <div class="top3">
+            ${topRooms.map((r, i) => `
+                <div class="bar ${i === 0 ? "gold" : i === 1 ? "silver" : "bronze"}"
+                     style="height:${120 + (r.cleanliness_rating / maxRating) * 120}px">
+                    <h3>Комната ${r.number}</h3>
+                    <span>${r.cleanliness_rating} баллов</span>
+                </div>
+            `).join("")}
+        </div>
+    `;
+
+    document.getElementById("otherRooms").innerHTML =
+        otherRooms.map((r, i) => `
+            <div class="card">
+                <div class="place">${i + 4}</div>
+                <div>
+                    <h3>Комната ${r.number}</h3>
+                    <p>${r.cleanliness_rating} баллов</p>
+                </div>
+            </div>
+        `).join("");
+});
+
+
+/* ===== ПЕРЕКЛЮЧАТЕЛЬ ===== */
+
+function showUsers() {
+    document.getElementById("usersSection").classList.remove("hidden");
+    document.getElementById("roomsSection").classList.add("hidden");
+
+    document.getElementById("tabUsers").classList.add("active");
+    document.getElementById("tabRooms").classList.remove("active");
+}
+
+function showRooms() {
+    document.getElementById("roomsSection").classList.remove("hidden");
+    document.getElementById("usersSection").classList.add("hidden");
+
+    document.getElementById("tabRooms").classList.add("active");
+    document.getElementById("tabUsers").classList.remove("active");
+}
+
+
+/* ===== ТЕМА И МЕНЮ ===== */
+
+function toggleMenu() {
+    document.getElementById("sideMenu").classList.toggle("open");
+}
+function toggleTheme() {
+    document.body.classList.toggle("dark");
+    localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
+}
+if (localStorage.getItem("theme") === "dark") {
+    document.body.classList.add("dark");
+}
+</script>
+
+</body>
+</html>
