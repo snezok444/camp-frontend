@@ -1,4 +1,4 @@
-const API_URL = "https://camp-platform-backend-production.up.railway.app";
+const API_URL = "https://camp-platform-backend.onrender.com";
 
 function get(path) {
     return fetch(API_URL + path, {
