@@ -26,7 +26,7 @@ function doLogin() {
     const login = document.getElementById("login").value;
     const password = document.getElementById("password").value;
 
-    fetch("https://camp-platform-backend-production.up.railway.app", {
+    fetch("https://camp-platform-backend.onrender.com", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ login, password })
